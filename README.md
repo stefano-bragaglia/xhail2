@@ -1,6 +1,8 @@
 xhail²
 ======
 
+![xhail² logo](logo.png)
+
 [![CI](https://github.com/stefano-bragaglia/xhail2/actions/workflows/ci.yml/badge.svg)](https://github.com/stefano-bragaglia/xhail2/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/stefano-bragaglia/xhail2/branch/main/graph/badge.svg)](https://codecov.io/gh/stefano-bragaglia/xhail2)
 
