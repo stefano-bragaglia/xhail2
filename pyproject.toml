@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "xhail2"
+version = "0.1.0"
+description = "Python port of XHAIL — eXtended Hybrid Abductive Inductive Learning"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+requires-python = ">=3.14"
+authors = [
+  { name = "Stefano Bragaglia", email = "stefano.bragaglia@gmail.com" },
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/xhail"]
+
+[tool.hatch.envs.default]
+type = "virtual"
+path = ".venv"
+python = "3.14"
+dependencies = [
+  "ruff",
+  "pytest",
+  "pytest-cov",
+  "radon",
+  "xenon",
+]
+
+[tool.hatch.envs.default.scripts]
+easy  = "radon cc -s src/ tests/"
+lint  = "ruff check src/ tests/"
+test  = "pytest --cov"
+check = [
+  "xenon --max-absolute A --max-modules A --max-average A src/ tests/",
+  "ruff check src/ tests/",
+  "pytest --cov",
+]
+
+[tool.ruff]
+src = ["src"]
+target-version = "py314"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["xhail"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
