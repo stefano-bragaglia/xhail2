@@ -13,6 +13,9 @@ authors = [
   { name = "Stefano Bragaglia", email = "stefano.bragaglia@gmail.com" },
 ]
 
+[project.scripts]
+xhail = "xhail.application:main"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/xhail"]
 
