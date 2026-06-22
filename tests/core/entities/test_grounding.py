@@ -10,8 +10,10 @@ from xhail.core.entities.grounding import Grounding
 from xhail.core.entities.problem import Problem
 from xhail.core.statements.display import Display
 from xhail.core.statements.example import Example
+from xhail.core.statements.mode_b import ModeB
 from xhail.core.statements.mode_h import ModeH
 from xhail.core.terms.atom import Atom
+from xhail.core.terms.placemarker import Placemarker, Type
 from xhail.core.terms.scheme import Scheme
 
 
@@ -525,3 +527,185 @@ def test_save_writes_use_clause_literal_filter(gbuilder):
     stream = io.StringIO()
     g.save(0, stream)
     assert "use_clause_literal" in stream.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# remove_abduced_atom with terms (covers builder.add_term loop)
+# ---------------------------------------------------------------------------
+
+def test_remove_abduced_atom_with_terms(gbuilder):
+    inner = Atom("tweety")
+    gbuilder.add_atom(Atom("abduced_flies", (inner,)))
+    gbuilder.remove_atom(Atom("abduced_flies", (inner,)))
+    g = gbuilder.build()
+    assert not g.has_delta()
+
+
+# ---------------------------------------------------------------------------
+# Delegating getters not yet covered
+# ---------------------------------------------------------------------------
+
+def test_get_mode_bs_delegates(cfg):
+    pb = Problem.Builder(cfg)
+    m = ModeB(scheme=Scheme("body"))
+    pb.add_mode_b(m)
+    problem = pb.build()
+    g = Grounding.Builder(problem).build()
+    assert m in g.get_mode_bs()
+
+
+def test_get_mode_hs_delegates(cfg):
+    pb = Problem.Builder(cfg)
+    m = ModeH(scheme=Scheme("head"))
+    pb.add_mode_h(m)
+    problem = pb.build()
+    g = Grounding.Builder(problem).build()
+    assert m in g.get_mode_hs()
+
+
+def test_get_table_returns_dict(cfg):
+    pb = Problem.Builder(cfg)
+    pb.add_mode_h(ModeH(scheme=Scheme("flies")))
+    problem = pb.build()
+    gb = Grounding.Builder(problem)
+    gb.add_atom(Atom("flies"))
+    g = gb.build()
+    assert isinstance(g.get_table(), dict)
+
+
+def test_has_domains_delegates(cfg):
+    pb = Problem.Builder(cfg)
+    pb.add_background("#domain animal(X).")
+    problem = pb.build()
+    g = Grounding.Builder(problem).build()
+    assert g.has_domains()
+
+
+# ---------------------------------------------------------------------------
+# as_clauses with body literals (covers lines 113, 118, 121, 128, 134-137, 152-155, 298)
+# ---------------------------------------------------------------------------
+
+def test_as_clauses_with_body_literals(cfg):
+    pm_x = Placemarker("x", Type.INPUT)
+    pb = Problem.Builder(cfg)
+    pb.add_mode_h(ModeH(scheme=Scheme("flies", (pm_x,))))
+    pb.add_mode_b(ModeB(scheme=Scheme("bird", (pm_x,))))
+    problem = pb.build()
+
+    tweety = Atom("tweety")
+    gb = Grounding.Builder(problem)
+    gb.add_atom(Atom("abduced_flies", (tweety,)))
+    gb.add_atom(Atom("flies", (tweety,)))
+    gb.add_atom(Atom("bird", (tweety,)))
+    gb.add_atom(Atom("x", (tweety,)))  # type fact for placemarker subsumption
+    g = gb.build()
+
+    clauses = g.as_clauses()
+    assert any("literal(0,1)." in c for c in clauses)
+    assert any("use_clause_literal(V1,V2)" in c for c in clauses)
+    assert any("bird" in c for c in clauses)
+
+
+# ---------------------------------------------------------------------------
+# _apply_mode_b negated branch (covers lines 49-53)
+# ---------------------------------------------------------------------------
+
+def test_kernel_with_negated_mode_b(cfg):
+    pm_x = Placemarker("x", Type.INPUT)
+    pb = Problem.Builder(cfg)
+    pb.add_mode_h(ModeH(scheme=Scheme("flies", (pm_x,))))
+    pb.add_mode_b(ModeB(scheme=Scheme("penguin", (pm_x,)), negated=True))
+    problem = pb.build()
+
+    tweety = Atom("tweety")
+    gb = Grounding.Builder(problem)
+    gb.add_atom(Atom("abduced_flies", (tweety,)))
+    gb.add_atom(Atom("flies", (tweety,)))
+    gb.add_atom(Atom("x", (tweety,)))
+    g = gb.build()
+
+    kernel = g.get_kernel()
+    assert len(kernel) == 1
+    assert any(lit.atom.identifier == "penguin" for lit in kernel[0].body)
+
+
+# ---------------------------------------------------------------------------
+# solve() when needs_induction() is False (covers lines 419-422)
+# ---------------------------------------------------------------------------
+
+def test_solve_no_induction_calls_builder_put(empty_problem):
+    from unittest.mock import MagicMock
+    g = Grounding.Builder(empty_problem).build()
+    assert not g.needs_induction()
+    mock_builder = MagicMock()
+    mock_values = MagicMock()
+    result = g.solve(mock_values, mock_builder)
+    mock_builder.put.assert_called_once()
+    assert result is mock_values
+
+
+# ---------------------------------------------------------------------------
+# 19->17: mode_h exists but does not subsume delta atom
+# ---------------------------------------------------------------------------
+
+def test_get_kernel_when_mode_h_does_not_subsume(cfg):
+    pb = Problem.Builder(cfg)
+    pb.add_mode_h(ModeH(scheme=Scheme("unrelated")))
+    problem = pb.build()
+    gb = Grounding.Builder(problem)
+    gb.add_atom(Atom("abduced_flies"))
+    gb.add_atom(Atom("flies"))
+    g = gb.build()
+    assert g.get_kernel() == ()
+
+
+# ---------------------------------------------------------------------------
+# 78->76: mode_h present but does not subsume head in _generalise_head
+# ---------------------------------------------------------------------------
+
+def test_generalisation_with_extra_mismatching_mode_h(cfg):
+    pb = Problem.Builder(cfg)
+    pb.add_mode_h(ModeH(scheme=Scheme("flies")))
+    pb.add_mode_h(ModeH(scheme=Scheme("unrelated")))  # doesn't match → 78->76
+    problem = pb.build()
+    gb = Grounding.Builder(problem)
+    gb.add_atom(Atom("abduced_flies"))
+    gb.add_atom(Atom("flies"))
+    g = gb.build()
+    gen = g.get_generalisation()
+    assert len(gen) == 1
+
+
+# ---------------------------------------------------------------------------
+# 87->85: mode_b present but does not subsume body literal
+# ---------------------------------------------------------------------------
+
+def test_generalisation_with_extra_mismatching_mode_b(cfg):
+    pm_x = Placemarker("x", Type.INPUT)
+    pb = Problem.Builder(cfg)
+    pb.add_mode_h(ModeH(scheme=Scheme("flies", (pm_x,))))
+    pb.add_mode_b(ModeB(scheme=Scheme("bird", (pm_x,))))
+    pb.add_mode_b(ModeB(scheme=Scheme("unrelated", (pm_x,))))  # doesn't subsume → 87->85
+    problem = pb.build()
+
+    tweety = Atom("tweety")
+    gb = Grounding.Builder(problem)
+    gb.add_atom(Atom("abduced_flies", (tweety,)))
+    gb.add_atom(Atom("flies", (tweety,)))
+    gb.add_atom(Atom("bird", (tweety,)))
+    gb.add_atom(Atom("x", (tweety,)))
+    g = gb.build()
+
+    gen = g.get_generalisation()
+    assert len(gen) == 1
+
+
+# ---------------------------------------------------------------------------
+# 246->244: parse_token returns None for unparseable token
+# ---------------------------------------------------------------------------
+
+def test_parse_with_unparseable_token(gbuilder):
+    # parse_token raises ParserError for invalid input → returns None → 246->244
+    gbuilder.parse(frozenset({"!!!invalid!!!"}))
+    g = gbuilder.build()
+    assert not g.get_facts()

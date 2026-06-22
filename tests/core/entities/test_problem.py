@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -499,3 +500,112 @@ def test_duplicate_display_stored_once(builder):
     builder.add_display(Display("foo", 1))
     builder.add_display(Display("foo", 1))
     assert len(builder.build().get_displays()) == 1
+
+
+# ---------------------------------------------------------------------------
+# None-guard tests for add_mode_b / add_mode_h
+# ---------------------------------------------------------------------------
+
+def test_add_mode_b_none_is_ignored(builder):
+    builder.add_mode_b(None)
+    assert not builder.build().has_modes()
+
+
+def test_add_mode_h_none_is_ignored(builder):
+    builder.add_mode_h(None)
+    assert not builder.build().has_modes()
+
+
+# ---------------------------------------------------------------------------
+# None-guard tests for remove_display/remove_example/remove_mode_b/remove_mode_h
+# ---------------------------------------------------------------------------
+
+def test_remove_display_none_is_ignored(builder):
+    d = Display("foo", 1)
+    builder.add_display(d)
+    builder.remove_display(None)
+    assert builder.build().has_displays()
+
+
+def test_remove_example_none_is_ignored(builder):
+    e = Example(Atom("bird"))
+    builder.add_example(e)
+    builder.remove_example(None)
+    assert builder.build().has_examples()
+
+
+def test_remove_mode_b_none_is_ignored(builder):
+    m = ModeB(scheme=Scheme("bar"))
+    builder.add_mode_b(m)
+    builder.remove_mode_b(None)
+    assert builder.build().get_mode_bs()
+
+
+def test_remove_mode_h_none_is_ignored(builder):
+    m = ModeH(scheme=Scheme("baz"))
+    builder.add_mode_h(m)
+    builder.remove_mode_h(None)
+    assert builder.build().get_mode_hs()
+
+
+# ---------------------------------------------------------------------------
+# _try_add / _try_remove when parser returns None
+# ---------------------------------------------------------------------------
+
+def test_add_background_display_bad_content_not_stored(builder):
+    # parse_display("") raises ParserError → returns None → display not stored
+    builder.add_background("#display .")
+    assert not builder.build().has_displays()
+
+
+def test_remove_background_display_bad_content_no_crash(builder):
+    # parse_display("") returns None → no-op, must not crash
+    builder.remove_background("#display .")
+
+
+# ---------------------------------------------------------------------------
+# _has_content and _print_summary (module-level helpers)
+# ---------------------------------------------------------------------------
+
+def test_has_content_true_with_background(cfg):
+    from xhail.core.entities.problem import _has_content
+    pb = Problem.Builder(cfg)
+    pb.add_background("bird(tweety).")
+    assert _has_content(pb.build())
+
+
+def test_has_content_false_when_empty(cfg):
+    from xhail.core.entities.problem import _has_content
+    assert not _has_content(Problem.Builder(cfg).build())
+
+
+def test_print_summary_terminate_message(capsys):
+    from xhail.core.entities.problem import _print_summary
+    cfg_terminate = Config(terminate=True)
+    problem = Problem.Builder(cfg_terminate).build()
+    mock_builder = MagicMock()
+    mock_builder.size.return_value = 1
+    mock_builder.is_meaningful.return_value = True
+    _print_summary(problem, mock_builder)
+    assert "terminated" in capsys.readouterr().out
+
+
+def test_print_summary_no_meaningful_message(cfg, capsys):
+    from xhail.core.entities.problem import _print_summary
+    problem = Problem.Builder(cfg).build()
+    mock_builder = MagicMock()
+    mock_builder.size.return_value = 0
+    mock_builder.is_meaningful.return_value = False
+    _print_summary(problem, mock_builder)
+    assert "meaningful" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
+# Builder.parse_path — OSError
+# ---------------------------------------------------------------------------
+
+def test_parse_path_oserror_calls_logger(builder, tmp_path):
+    missing = tmp_path / "nonexistent.lp"
+    with patch("xhail.core.logger.error", side_effect=SystemExit(-1)):
+        with pytest.raises(SystemExit):
+            builder.parse_path(missing)

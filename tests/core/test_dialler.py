@@ -12,9 +12,12 @@ from xhail.core.dialler import (
     _IGNORED_WARNINGS,
     _handle_errors,
     _handle_line,
+    _log_command,
     _make_temp,
     _parse_target,
     _process_error,
+    _read_clasp,
+    _run_gringo,
     _write_source,
     calls,
 )
@@ -197,6 +200,20 @@ def test_handle_errors_other_line_to_stderr(tmp_path, capsys):
     _handle_errors(f, mute=False)
     captured = capsys.readouterr()
     assert "some other output" in captured.err
+
+
+def test_handle_errors_blank_lines_skipped(tmp_path):
+    # blank line in file → if line: is False → branch 86->84 covered
+    f = tmp_path / "err.txt"
+    f.write_text("\nsome output\n")
+    _handle_errors(f, mute=False)
+
+
+def test_handle_errors_oserror_path(tmp_path):
+    missing = tmp_path / "nonexistent_errors_file.txt"
+    with patch("xhail.core.logger.error", side_effect=SystemExit(-1)):
+        with pytest.raises(SystemExit):
+            _handle_errors(missing, mute=False)
 
 
 # ---------------------------------------------------------------------------
@@ -397,3 +414,104 @@ def test_execute_happy_path_returns_acquirer_result():
         values, outputs = d.execute(0)
     assert values is expected_values
     assert outputs is expected_outputs
+
+
+# ---------------------------------------------------------------------------
+# _log_command
+# ---------------------------------------------------------------------------
+
+def test_log_command_debug_false_no_output(capsys):
+    _log_command(False, ["gringo", "source.lp"])
+    assert capsys.readouterr().out == ""
+
+
+def test_log_command_debug_true_prints_command(capsys):
+    _log_command(True, ["gringo", "source.lp"])
+    out = capsys.readouterr().out
+    assert "gringo" in out
+    assert "source.lp" in out
+
+
+# ---------------------------------------------------------------------------
+# _handle_errors OSError path
+# ---------------------------------------------------------------------------
+
+def test_handle_errors_oserror_calls_logger_error(tmp_path):
+    missing = tmp_path / "nonexistent_errors.txt"
+    with patch("xhail.core.logger.error", side_effect=SystemExit(-1)):
+        with pytest.raises(SystemExit):
+            _handle_errors(missing, mute=False)
+
+
+# ---------------------------------------------------------------------------
+# _run_gringo
+# ---------------------------------------------------------------------------
+
+def test_run_gringo_success(tmp_path):
+    middle = tmp_path / "middle.tmp"
+    errors = tmp_path / "errors.tmp"
+    errors.write_text("")
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = None
+        result = _run_gringo(["echo", ""], middle, errors, debug=False, mute=False, output=True, kill=0)
+    assert result is True
+
+
+def test_run_gringo_oserror_returns_false(tmp_path):
+    middle = tmp_path / "middle.tmp"
+    errors = tmp_path / "errors.tmp"
+    errors.write_text("")
+    with patch("subprocess.run", side_effect=OSError("no such file")):
+        result = _run_gringo(["no_such_binary"], middle, errors, debug=False, mute=False, output=True, kill=0)
+    assert result is False
+
+
+def test_run_gringo_timeout_returns_false(tmp_path):
+    import subprocess
+    middle = tmp_path / "middle.tmp"
+    errors = tmp_path / "errors.tmp"
+    errors.write_text("")
+    with patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd=["gringo"], timeout=1)):
+        result = _run_gringo(["gringo"], middle, errors, debug=False, mute=False, output=True, kill=1)
+    assert result is False
+
+
+# ---------------------------------------------------------------------------
+# _read_clasp
+# ---------------------------------------------------------------------------
+
+def test_read_clasp_success(tmp_path):
+    target = tmp_path / "target.tmp"
+    target.write_bytes(b"UNKNOWN\n")
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = None
+        values, outputs = _read_clasp(["echo", ""], target, debug=False, output=True, kill=0)
+    assert isinstance(outputs, (set, frozenset))
+
+
+def test_read_clasp_oserror_returns_fallback(tmp_path):
+    target = tmp_path / "target.tmp"
+    with patch("subprocess.run", side_effect=OSError("no such file")):
+        values, outputs = _read_clasp(["no_such_binary"], target, debug=False, output=True, kill=0)
+    assert values is None
+    assert outputs == set()
+
+
+def test_read_clasp_timeout_returns_fallback(tmp_path):
+    import subprocess
+    target = tmp_path / "target.tmp"
+    with patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd=["clasp"], timeout=1)):
+        values, outputs = _read_clasp(["clasp"], target, debug=False, output=True, kill=1)
+    assert values is None
+    assert outputs == set()
+
+
+# ---------------------------------------------------------------------------
+# Dialler.__init__ OSError path (covers lines 157-159)
+# ---------------------------------------------------------------------------
+
+def test_dialler_init_make_temp_oserror():
+    with patch("xhail.core.dialler._make_temp", side_effect=OSError("disk full")), \
+         patch("xhail.core.logger.error", side_effect=SystemExit(-1)):
+        with pytest.raises(SystemExit):
+            Dialler(_make_config(), _make_solvable())

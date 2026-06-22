@@ -82,13 +82,6 @@ def _remove_plain(builder: Problem.Builder, stmt: str) -> None:
         builder._background.pop(stmt, None)
 
 
-def _remove_plain(builder: Problem.Builder, stmt: str) -> None:
-    if stmt.startswith("#domain"):
-        builder._domains.pop(stmt, None)
-    else:
-        builder._background.pop(stmt, None)
-
-
 # ---------------------------------------------------------------------------
 # get_filters helpers
 # ---------------------------------------------------------------------------

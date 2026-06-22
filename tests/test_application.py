@@ -12,6 +12,7 @@ from xhail.application import (
     _handle_timeout,
     _parse_args,
     _report_missing,
+    _run_finder,
     _search_paths,
     _solve,
 )
@@ -308,3 +309,83 @@ def test_main_prettify_calls_dump(tmp_path):
          patch("xhail.core.utils.dump") as mock_dump:
         main(["-p", str(src)])
     assert mock_dump.called
+
+
+# ---------------------------------------------------------------------------
+# _run_finder
+# ---------------------------------------------------------------------------
+
+def test_run_finder_tools_found():
+    config = MagicMock()
+    config.search = False
+    mock_finder = MagicMock()
+    mock_finder.is_found.return_value = True
+    with patch("xhail.core.finder.Finder", return_value=mock_finder):
+        _run_finder(config)
+    mock_finder.test.assert_called()
+
+
+def test_run_finder_not_found_reports_missing():
+    config = MagicMock()
+    config.search = False
+    mock_finder = MagicMock()
+    mock_finder.is_found.return_value = False
+    with patch("xhail.core.finder.Finder", return_value=mock_finder), \
+         patch("xhail.application._report_missing") as mock_report:
+        _run_finder(config)
+    mock_report.assert_called_once_with(mock_finder)
+
+
+def test_run_finder_search_found_calls_logger_found():
+    config = MagicMock()
+    config.search = True
+    mock_finder = MagicMock()
+    mock_finder.is_found.side_effect = [False, True]
+    with patch("xhail.core.finder.Finder", return_value=mock_finder), \
+         patch("xhail.application._search_paths", return_value=True), \
+         patch("xhail.core.logger.found") as mock_found:
+        _run_finder(config)
+    mock_found.assert_called_once_with(config)
+
+
+# ---------------------------------------------------------------------------
+# _solve CancelledError
+# ---------------------------------------------------------------------------
+
+def test_solve_cancelled_error_logs_message():
+    from concurrent.futures import CancelledError
+    config = MagicMock()
+    config.kill = 0
+    problem = MagicMock()
+    problem.solve.side_effect = CancelledError()
+    with patch("xhail.core.logger.message") as mock_msg:
+        _solve(config, problem)
+    assert mock_msg.called
+    assert "cancelled" in mock_msg.call_args[0][0]
+
+
+def test_run_finder_search_path_not_found():
+    # _search_paths returns False → logger.found not called (96->99 branch)
+    config = MagicMock()
+    config.search = True
+    mock_finder = MagicMock()
+    mock_finder.is_found.return_value = False
+    with patch("xhail.core.finder.Finder", return_value=mock_finder), \
+         patch("xhail.application._search_paths", return_value=False), \
+         patch("xhail.application._report_missing") as mock_report:
+        _run_finder(config)
+    mock_report.assert_called_once_with(mock_finder)
+
+
+def test_main_non_prettify_calls_run_finder_and_solve():
+    # Exercises main() lines 174 (_run_finder) and 181 (_solve)
+    from xhail.application import main
+    mock_problem = MagicMock()
+    with patch("xhail.core.entities.answers.started"), \
+         patch("xhail.core.logger.header"), \
+         patch("xhail.application._run_finder") as mock_rf, \
+         patch("xhail.application._build_problem", return_value=mock_problem), \
+         patch("xhail.application._solve") as mock_solve:
+        main([])
+    assert mock_rf.called
+    assert mock_solve.called
