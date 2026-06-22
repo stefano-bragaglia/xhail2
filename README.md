@@ -85,17 +85,17 @@ This creates a `.venv/` virtual environment in the project directory with all re
 
 To verify the installation:
 
-    hatch run xhail2 --version
+    hatch run xhail --version
 
 which should output:
 
-    xhail2 version 0.1.0
+    xhail 1.0.0
 
     Copyright (c) Stefano Bragaglia
     Copyright (c) Oliver Ray
 
     GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
-    'xhail2' is free software: you are free to change and redistribute it.
+    'xhail' is free software: you are free to change and redistribute it.
     There is NO WARRANTY, to the extent permitted by law.
 
 ### Available scripts
@@ -141,13 +141,13 @@ Common installation paths that **xhail²** will search automatically:
 
 Once the ASP tools are installed, run **xhail²** via hatch:
 
-    hatch run xhail2 --help
+    hatch run xhail --help
 
 which produces:
 
-    xhail2 version 0.1.0
+    xhail 1.0.0
 
-    Usage:     xhail2  [options]  [files]
+    Usage:     python -m xhail  [options]  [files]
 
     Options:
 
@@ -163,13 +163,14 @@ which produces:
       --mute,-m           : Suppress warning messages
       --prettify,-p       : Nicely format current problem
       --search,-s         : Search for clasp 3 and gringo 3
+      --terminate,-t      : Stop searching hypotheses after first match
       --version,-v        : Print version information and exit
 
-    Example:   xhail2  -c /Library/Clasp/clasp  -g /Library/Gringo/gringo  example.lp
+    Example:   python -m xhail  -c /Library/Clasp/clasp  -g /Library/Gringo/gringo  example.pl
 
 The following example solves the penguins problem:
 
-    hatch run xhail2 -a -b -f -m -c /Library/Clasp/clasp -g /Library/Gringo/gringo ./examples/toys/penguins_weighted.lp
+    hatch run xhail -a -b -f -m -c /Library/Clasp/clasp -g /Library/Gringo/gringo ./examples/toys/penguins_weighted.lp
 
 ### XHAIL syntax
 

@@ -14,7 +14,7 @@ ANSI_WHITE = "[37m"
 ANSI_YELLOW = "[33m"
 
 SIGNATURE = "xhail"
-VERSION = "0.5.1"
+VERSION = "1.0.0"
 
 _memory: set[str] = set()
 

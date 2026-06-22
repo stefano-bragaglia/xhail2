@@ -101,7 +101,7 @@ def test_signature():
 
 
 def test_version():
-    assert VERSION == "0.5.1"
+    assert VERSION == "1.0.0"
 
 
 def test_ansi_reset():
