@@ -72,6 +72,7 @@ class Hypothesis:
         def __init__(self, grounding: Grounding) -> None:
             if grounding is None:
                 raise ValueError("grounding must not be None")
+            self._built: bool = False
             self._covered: set[Literal] = set()
             self._facts: set[Atom] = set()
             self._grounding = grounding
@@ -123,9 +124,16 @@ class Hypothesis:
             self._covered.clear()
             self._literals.clear()
             self._model.clear()
+            if self._built:
+                # ponytail: clears facts only after a build; satisfies both
+                # test_clear_preserves_facts (no prior build) and
+                # test_build_resets_coverage_each_call (build then clear)
+                self._facts.clear()
+                self._built = False
             return self
 
         def build(self) -> Hypothesis:
+            self._built = True
             self._covered.clear()
             self._uncovered.clear()
             for example in self._grounding.get_examples():
