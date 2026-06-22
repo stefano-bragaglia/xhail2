@@ -7,14 +7,52 @@ name = "xhail2"
 version = "1.0.0"
 description = "Python port of XHAIL — eXtended Hybrid Abductive Inductive Learning"
 readme = "README.md"
-license = "GPL-3.0-or-later"
+license = {text = "GPL-3.0-or-later"}
 requires-python = ">=3.14"
 authors = [
   { name = "Stefano Bragaglia", email = "stefano.bragaglia@gmail.com" },
 ]
+keywords = [
+  "ilp",
+  "inductive-logic-programming",
+  "abduction",
+  "induction",
+  "deduction",
+  "answer-set-programming",
+  "asp",
+  "nonmonotonic-reasoning",
+  "machine-learning",
+  "logic",
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/stefano-bragaglia/xhail2"
+Source = "https://github.com/stefano-bragaglia/xhail2"
+Changelog = "https://github.com/stefano-bragaglia/xhail2/blob/main/CHANGELOG.md"
 
 [project.scripts]
 xhail = "xhail.application:main"
+
+[project.optional-dependencies]
+dev = [
+  "pytest ==9.1.1",
+  "pytest-cov ==7.1.0",
+  "radon ==6.0.1",
+  "ruff ==0.15.18",
+  "xenon ==0.9.3",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/xhail"]
@@ -23,13 +61,7 @@ packages = ["src/xhail"]
 type = "virtual"
 path = ".venv"
 python = "3.14"
-dependencies = [
-  "ruff",
-  "pytest",
-  "pytest-cov",
-  "radon",
-  "xenon",
-]
+features = ["dev"]
 
 [tool.hatch.envs.default.scripts]
 easy  = "radon cc -s src/ tests/"
@@ -47,10 +79,12 @@ target-version = "py314"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["src"]
 
 [tool.coverage.run]
-source = ["xhail"]
+source = ["src/xhail"]
 branch = true
 
 [tool.coverage.report]
 show_missing = true
+fail_under = 80
