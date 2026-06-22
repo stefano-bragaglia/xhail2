@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "xhail2"
-version = "0.1.0"
+version = "1.0.0"
 description = "Python port of XHAIL — eXtended Hybrid Abductive Inductive Learning"
 readme = "README.md"
 license = "GPL-3.0-or-later"
@@ -12,6 +12,9 @@ requires-python = ">=3.14"
 authors = [
   { name = "Stefano Bragaglia", email = "stefano.bragaglia@gmail.com" },
 ]
+
+[project.scripts]
+xhail = "xhail.application:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/xhail"]
