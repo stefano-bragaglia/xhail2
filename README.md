@@ -4,7 +4,9 @@ xhail²
 ![xhail² logo](logo.png)
 
 [![CI](https://github.com/stefano-bragaglia/xhail2/actions/workflows/ci.yml/badge.svg)](https://github.com/stefano-bragaglia/xhail2/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/stefano-bragaglia/xhail2/branch/main/graph/badge.svg)](https://codecov.io/gh/stefano-bragaglia/xhail2)
+[![PyPI version](https://img.shields.io/pypi/v/xhail2)](https://pypi.org/project/xhail2/)
+[![Python versions](https://img.shields.io/pypi/pyversions/xhail2)](https://pypi.org/project/xhail2/)
+[![License](https://img.shields.io/github/license/stefano-bragaglia/xhail2)](LICENSE)
 
 **xhail²** *(eXtended Hybrid Abductive Inductive Learning)* is a nonmonotonic ILP *(Inductive Logic Programming)* system that combines *deductive* (consequence-based), *abductive* (assumption-based) and *inductive* (generalisation-based) inference types within a common logical framework.
 
@@ -71,17 +73,22 @@ If Python 3.14 is not installed, download it from the [official website](https:/
 
 ### Obtaining xhail²
 
-Clone the repository:
+Clone the repository and enter the Python project directory:
 
     git clone https://github.com/stefano-bragaglia/xhail2.git
+    cd xhail2/python
+
+All subsequent commands must be run from within the `python/` subdirectory.
 
 ### Installing xhail²
 
-From within the `xhail2/` folder, create the project environment and install all dependencies:
+Create the project environment and install all dependencies:
 
     hatch env create
 
-This creates a `.venv/` virtual environment in the project directory with all required tools.
+This creates a `.venv/` virtual environment with all required tools. If the `xhail` entry point is not immediately available, reinstall the package with:
+
+    hatch run pip install -e .
 
 To verify the installation:
 
@@ -97,6 +104,16 @@ which should output:
     GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
     'xhail' is free software: you are free to change and redistribute it.
     There is NO WARRANTY, to the extent permitted by law.
+
+### Project layout
+
+    xhail2/
+    ├── python/            ← Python port (this project)
+    │   ├── src/xhail/     ← source code
+    │   ├── tests/         ← test suite (1009 tests, 93 % coverage)
+    │   ├── examples/      ← sample .lp problem files
+    │   └── pyproject.toml
+    └── java/              ← original Java implementation
 
 ### Available scripts
 
@@ -170,7 +187,7 @@ which produces:
 
 The following example solves the penguins problem:
 
-    hatch run xhail -a -b -f -m -c /Library/Clasp/clasp -g /Library/Gringo/gringo ./examples/toys/penguins_weighted.lp
+    hatch run xhail -a -b -f -m -c /Library/Clasp/clasp -g /Library/Gringo/gringo examples/toys/penguins_weighted.lp
 
 ### XHAIL syntax
 
